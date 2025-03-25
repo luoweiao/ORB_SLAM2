@@ -29,7 +29,8 @@
 namespace ORB_SLAM2
 {
 /** 
- * @brief System class
+ * @brief System class，初始化，确定传感器类型，是否使用Viewer，加载词袋文件，创建地图，创建绘制器，
+ * 初始化建图线程mptLocalMapping，初始化回环检测线程mptLoopClosing，初始化可视化线程mptViewer；并将各个线程之间的指针进行设置
  * @param strVocFile 词袋文件路径
  * @param strSettingsFile 配置文件路径
  * @param sensor 传感器类型
@@ -98,21 +99,27 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
+    //开启建图进程，初始化mpLocalMapper类指针，传入线程，并调用该类的Run函数
     mptLocalMapping = new thread(&ORB_SLAM2::LocalMapping::Run,mpLocalMapper);
 
     //Initialize the Loop Closing thread and launch
     mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR);
+    //开启回环检测进程，初始化mpLoopCloser类指针，传入线程，并调用该类的Run函数
     mptLoopClosing = new thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
 
     //Initialize the Viewer thread and launch
     if(bUseViewer)
     {
+
         mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile);
+        //开启可视化进程，初始化mpViewer类指针，传入线程，并调用该类的Run函数
         mptViewer = new thread(&Viewer::Run, mpViewer);
+        //给mpViewer类指针设置地图显示器，帧显示器，跟踪器
         mpTracker->SetViewer(mpViewer);
     }
 
     //Set pointers between threads
+    //给各个线程设置指针
     mpTracker->SetLocalMapper(mpLocalMapper);
     mpTracker->SetLoopClosing(mpLoopCloser);
 
