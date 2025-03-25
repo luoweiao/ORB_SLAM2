@@ -28,7 +28,17 @@
 
 namespace ORB_SLAM2
 {
-
+/** 
+ * @brief System class
+ * @param strVocFile 词袋文件路径
+ * @param strSettingsFile 配置文件路径
+ * @param sensor 传感器类型
+ * @param bUseViewer 是否使用Viewer
+ * @param mpViewer 地图显示器
+ * @param mbReset 是否重置
+ * @param mbActivateLocalizationMode 是否激活定位模式
+ * @param mbDeactivateLocalizationMode 是否关闭定位模式
+*/
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
                const bool bUseViewer):mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),mbActivateLocalizationMode(false),
         mbDeactivateLocalizationMode(false)
@@ -62,7 +72,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     cout << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
 
     mpVocabulary = new ORBVocabulary();
-    bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
+    bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile); //加载词袋文件
     if(!bVocLoad)
     {
         cerr << "Wrong path to vocabulary. " << endl;
@@ -225,8 +235,8 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
 
     // Check mode change
     {
-        unique_lock<mutex> lock(mMutexMode);
-        if(mbActivateLocalizationMode)
+        unique_lock<mutex> lock(mMutexMode);//线程锁
+        if(mbActivateLocalizationMode)//是否使用仅定位模式
         {
             mpLocalMapper->RequestStop();
 
@@ -236,14 +246,14 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
                 usleep(1000);
             }
 
-            mpTracker->InformOnlyTracking(true);
+            mpTracker->InformOnlyTracking(true); //仅跟踪不更新地图
             mbActivateLocalizationMode = false;
         }
         if(mbDeactivateLocalizationMode)
         {
-            mpTracker->InformOnlyTracking(false);
-            mpLocalMapper->Release();
-            mbDeactivateLocalizationMode = false;
+            mpTracker->InformOnlyTracking(false);//停止仅跟踪
+            mpLocalMapper->Release(); //释放定位线程关键帧
+            mbDeactivateLocalizationMode = false;//重置标识符
         }
     }
 
@@ -255,7 +265,7 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
         mpTracker->Reset();
         mbReset = false;
     }
-    }
+    }//重置标识符
 
     cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp);
 

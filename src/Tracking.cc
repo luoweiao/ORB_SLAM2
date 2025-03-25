@@ -42,7 +42,17 @@ using namespace std;
 
 namespace ORB_SLAM2
 {
-
+/**
+ * @brief 初始化Tracking类，创建相机内参矩阵，创建ORB特征提取器
+ * @param pSys 系统指针
+ * @param pVoc 词袋指针
+ * @param pFrameDrawer 帧绘制器指针
+ * @param pMapDrawer 地图绘制器指针
+ * @param pMap 地图指针
+ * @param pKFDB 关键帧数据库指针
+ * @param strSettingPath 配置文件路径
+ * @param sensor 传感器类型
+ */
 Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
@@ -86,6 +96,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     mMinFrames = 0;
     mMaxFrames = fps;
 
+    //创建相机内参矩阵
     cout << endl << "Camera Parameters: " << endl;
     cout << "- fx: " << fx << endl;
     cout << "- fy: " << fy << endl;
@@ -109,7 +120,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         cout << "- color order: BGR (ignored if grayscale)" << endl;
 
     // Load ORB parameters
-
+    //创建ORB特征提取器
     int nFeatures = fSettings["ORBextractor.nFeatures"];
     float fScaleFactor = fSettings["ORBextractor.scaleFactor"];
     int nLevels = fSettings["ORBextractor.nLevels"];
@@ -253,9 +264,11 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
         else
             cvtColor(mImGray,mImGray,CV_BGRA2GRAY);
     }
-
-    if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET)
+    //将图片转换为灰度图像
+    if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET)//未初始化或者未接收到图像（没有开始处理图像）
         mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+        // 当前帧灰度图像，时间戳，ORB特征提取器，词典，相机内参，畸变系数，双目基线，深度阈值
+        // Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
     else
         mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
 
@@ -1584,7 +1597,7 @@ void Tracking::ChangeCalibration(const string &strSettingPath)
 
 void Tracking::InformOnlyTracking(const bool &flag)
 {
-    mbOnlyTracking = flag;
+    mbOnlyTracking = flag; //是否仅跟踪不进行地图更新
 }
 
 

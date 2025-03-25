@@ -27,7 +27,11 @@
 
 namespace ORB_SLAM2
 {
-
+/**
+ * @brief Local Mapping. Create new MapPoints and KeyFrames when a new KF is inserted.
+ * @param pMap 地图指针
+ * @param bMonocular 是否为单目
+ */
 LocalMapping::LocalMapping(Map *pMap, const float bMonocular):
     mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
     mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true)
@@ -556,8 +560,8 @@ void LocalMapping::RequestStop()
 {
     unique_lock<mutex> lock(mMutexStop);
     mbStopRequested = true;
-    unique_lock<mutex> lock2(mMutexNewKFs);
-    mbAbortBA = true;
+    unique_lock<mutex> lock2(mMutexNewKFs); 
+    mbAbortBA = true; //终止局部优化
 }
 
 bool LocalMapping::Stop()

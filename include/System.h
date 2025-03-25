@@ -154,8 +154,12 @@ private:
     FrameDrawer* mpFrameDrawer;
     MapDrawer* mpMapDrawer;
 
-    // System threads: Local Mapping, Loop Closing, Viewer.
-    // The Tracking thread "lives" in the main execution thread that creates the System object.
+    /**
+     * @brief System threads: Local Mapping, Loop Closing, Viewer.The Tracking thread "lives" in the main execution thread that creates the System object.
+     * @param mpLocalMapper 本地建图线程
+     * @param mpLoopCloser 回环检测线程
+     * @param mpViewer 可视化线程
+     */
     std::thread* mptLocalMapping;
     std::thread* mptLoopClosing;
     std::thread* mptViewer;
