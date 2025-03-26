@@ -406,7 +406,14 @@ static int bit_pattern_31_[256*4] =
     7,0, 12,-2/*mean (0.127002), correlation (0.537452)*/,
     -1,-6, 0,-11/*mean (0.127148), correlation (0.547401)*/
 };
-
+/**
+ * @brief ORB pattern
+ * @param nfeatures 提取特征数量
+ * @param scaleFactor 图像金字塔尺度因子
+ * @param nlevels 图像金字塔层数
+ * @param iniThFAST FAST角点检测阈值
+ * @param minThFAST FAST角点最小阈值
+ */
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
          int _iniThFAST, int _minThFAST):
     nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels),
@@ -429,32 +436,37 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
         mvInvScaleFactor[i]=1.0f/mvScaleFactor[i];
         mvInvLevelSigma2[i]=1.0f/mvLevelSigma2[i];
     }
-
+    //mat数组，初始化图像金字塔
     mvImagePyramid.resize(nlevels);
 
+    //特征点数量向量
     mnFeaturesPerLevel.resize(nlevels);
     float factor = 1.0f / scaleFactor;
+    //期望每层的特征点数量
     float nDesiredFeaturesPerScale = nfeatures*(1 - factor)/(1 - (float)pow((double)factor, (double)nlevels));
 
     int sumFeatures = 0;
     for( int level = 0; level < nlevels-1; level++ )
     {
+        //四舍五入为整数赋值给该向量
         mnFeaturesPerLevel[level] = cvRound(nDesiredFeaturesPerScale);
         sumFeatures += mnFeaturesPerLevel[level];
+        //每层逐渐减少特征点数量
         nDesiredFeaturesPerScale *= factor;
     }
     mnFeaturesPerLevel[nlevels-1] = std::max(nfeatures - sumFeatures, 0);
 
     const int npoints = 512;
+    //将bit_pattern_31_数组转换为地址强制转换为Point类型指针，并插入pattern向量中用以描述ORB特征点
     const Point* pattern0 = (const Point*)bit_pattern_31_;
     std::copy(pattern0, pattern0 + npoints, std::back_inserter(pattern));
 
     //This is for orientation
     // pre-compute the end of a row in a circular patch
-    umax.resize(HALF_PATCH_SIZE + 1);
+    umax.resize(HALF_PATCH_SIZE + 1);//查找点周围圆形边上的16个点
 
-    int v, v0, vmax = cvFloor(HALF_PATCH_SIZE * sqrt(2.f) / 2 + 1);
-    int vmin = cvCeil(HALF_PATCH_SIZE * sqrt(2.f) / 2);
+    int v, v0, vmax = cvFloor(HALF_PATCH_SIZE * sqrt(2.f) / 2 + 1);//计算并向下取整
+    int vmin = cvCeil(HALF_PATCH_SIZE * sqrt(2.f) / 2);//计算并向上取整
     const double hp2 = HALF_PATCH_SIZE*HALF_PATCH_SIZE;
     for (v = 0; v <= vmax; ++v)
         umax[v] = cvRound(sqrt(hp2 - v * v));
