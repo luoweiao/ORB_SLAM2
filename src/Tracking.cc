@@ -245,7 +245,11 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
     return mCurrentFrame.mTcw.clone();
 }
 
-
+/**
+ * @brief 输入左目图像，将图像转换为mImGray并初始化mCurrentFrame，并进行tracking过程，输出世界坐标系到该帧相机坐标系的变换矩阵
+ * @param im 单目图像
+ * @param timestamp 时间戳
+ */
 cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 {
     mImGray = im;

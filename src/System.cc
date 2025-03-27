@@ -243,7 +243,8 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
     // Check mode change
     {
         unique_lock<mutex> lock(mMutexMode);//线程锁
-        if(mbActivateLocalizationMode)//是否使用仅定位模式
+        //模式判断是否关闭局部地图线程
+        if(mbActivateLocalizationMode)
         {
             mpLocalMapper->RequestStop();
 
@@ -252,10 +253,11 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
             {
                 usleep(1000);
             }
-
+            //局部地图关闭之后，只进行跟踪线程，只计算相机位姿，不对局部地图进行更新
             mpTracker->InformOnlyTracking(true); //仅跟踪不更新地图
             mbActivateLocalizationMode = false;
         }
+        //设置为true时，局部地图线程被释放，关键帧从局部地图中删除
         if(mbDeactivateLocalizationMode)
         {
             mpTracker->InformOnlyTracking(false);//停止仅跟踪
@@ -273,9 +275,10 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
         mbReset = false;
     }
     }//重置标识符
-
+    //根据图片和时间戳返回相机的位姿估计结果
     cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp);
 
+    //返回后，更新状态
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;

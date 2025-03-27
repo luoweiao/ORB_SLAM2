@@ -175,21 +175,29 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
      mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
 {
-    // Frame ID
+    //**1 Frame ID 自增 ID为静态变量，作用域为全局
     mnId=nNextId++;
 
-    // Scale Level Info
+    // Scale Level Info 图像金字塔的参数
+    //**2 获取金字塔层数
     mnScaleLevels = mpORBextractorLeft->GetLevels();
+    //获取每层的缩放因子
     mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+    //获取每层缩放因子的自然对数
     mfLogScaleFactor = log(mfScaleFactor);
+    //获取各层缩放因子
     mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
+    //获取各层缩放因子的倒数
     mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
+    //获取各层的sigma2值
     mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
+    //获取各层的sigma2值的倒数
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
+    /**3 提取这个单目图像的特征点 */
     ExtractORB(0,imGray);
-
+    //求取
     N = mvKeys.size();
 
     if(mvKeys.empty())
@@ -244,11 +252,16 @@ void Frame::AssignFeaturesToGrid()
     }
 }
 
-void Frame::ExtractORB(int flag, const cv::Mat &im)
+void Frame::ExtractORB(int flag,            //0-左图 1-右图 
+                        const cv::Mat &im)  //待提取的特征点图像
 {
-    if(flag==0)
-        (*mpORBextractorLeft)(im,cv::Mat(),mvKeys,mDescriptors);
-    else
+    if(flag==0)                             //提取左图特征点
+        //仿函数
+        (*mpORBextractorLeft)(im,           //待提取的特征点图像
+                            cv::Mat(),      //
+                            mvKeys,         //输出保存提取后的特征点
+                            mDescriptors);  //输出保存特征点的描述子
+    else                                    //提取右图特征点
         (*mpORBextractorRight)(im,cv::Mat(),mvKeysRight,mDescriptorsRight);
 }
 

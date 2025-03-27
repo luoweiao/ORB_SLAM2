@@ -103,6 +103,7 @@ public:
     ORBVocabulary* mpORBvocabulary;
 
     // Feature extractor. The right is used only in the stereo case.
+    //ORB特征提取句柄，右侧提取器只有在双目时才会用到
     ORBextractor* mpORBextractorLeft, *mpORBextractorRight;
 
     // Frame timestamp.
@@ -164,6 +165,7 @@ public:
     cv::Mat mTcw;
 
     // Current and Next Frame id.
+    //类的静态成员变量，这些变量在整个系统开始执行时被初始化，在全局区域被初始化。
     static long unsigned int nNextId;
     long unsigned int mnId;
 

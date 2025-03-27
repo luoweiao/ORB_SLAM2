@@ -1062,16 +1062,23 @@ static void computeDescriptors(const Mat& image, vector<KeyPoint>& keypoints, Ma
         computeOrbDescriptor(keypoints[i], image, &pattern[0], descriptors.ptr((int)i));
 }
 
-void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPoint>& _keypoints,
-                      OutputArray _descriptors)
+
+void ORBextractor::operator()( InputArray _image,               //输入图像
+                                InputArray _mask,               //图像处理掩膜
+                                vector<KeyPoint>& _keypoints,   //特征点容器
+                                OutputArray _descriptors)       //输出描述子
 { 
+    //**准备阶段**
+    //判断图像是否为空
     if(_image.empty())
         return;
-
+    //获取图像大小
     Mat image = _image.getMat();
+    //判断是否为灰度图
     assert(image.type() == CV_8UC1 );
 
     // Pre-compute the scale pyramid
+    //计算图像金字塔
     ComputePyramid(image);
 
     vector < vector<KeyPoint> > allKeypoints;
@@ -1125,27 +1132,45 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
         _keypoints.insert(_keypoints.end(), keypoints.begin(), keypoints.end());
     }
 }
-
+//构建图像金字塔
 void ORBextractor::ComputePyramid(cv::Mat image)
 {
     for (int level = 0; level < nlevels; ++level)
     {
+        //获取本层缩放因子
         float scale = mvInvScaleFactor[level];
+        //计算本层图像的像素尺寸大小
         Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
+        //全尺寸图像，对图像进行补边
         Size wholeSize(sz.width + EDGE_THRESHOLD*2, sz.height + EDGE_THRESHOLD*2);
+        //定义对应尺寸图像变量
         Mat temp(wholeSize, image.type()), masktemp;
+        //mvImagePyramid为空的vector<Mat>类型
+        //浅拷贝，将图像金字塔该图层的图像指针指向temp中间部分（Rect类（矩形左上角x,y,宽，高））
         mvImagePyramid[level] = temp(Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
 
+        //计算第0层以上的图像金字塔
         // Compute the resized image
         if( level != 0 )
         {
-            resize(mvImagePyramid[level-1], mvImagePyramid[level], sz, 0, 0, INTER_LINEAR);
+            //将上一层金字塔图像根据设定的尺度因子缩放到本层图像
+            resize(mvImagePyramid[level-1], //上一层金字塔图像（输入）
+                    mvImagePyramid[level],  //本层金字塔图像（输出）
+                    sz,                     //输出图像尺寸
+                    0,                      //水平方向缩放系数，留0自动计算
+                    0,                      //垂直方向缩放系数，留0自动计算
+                    INTER_LINEAR);          //插值方法
 
-            copyMakeBorder(mvImagePyramid[level], temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
-                           BORDER_REFLECT_101+BORDER_ISOLATED);            
+            //扩展边界
+            copyMakeBorder(mvImagePyramid[level],                               //原始图像
+                                            temp,                               //目标图像
+                                            EDGE_THRESHOLD, EDGE_THRESHOLD,     //上下边界
+                                            EDGE_THRESHOLD, EDGE_THRESHOLD,     //左右边界
+                           BORDER_REFLECT_101+BORDER_ISOLATED);                 //扩充方法
         }
         else
         {
+            //对于第0层金字塔，直接将图像深拷贝到temp的中间，并且赌气周围进行边界扩展，temp为原图扩展后的图像
             copyMakeBorder(image, temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
                            BORDER_REFLECT_101);            
         }
