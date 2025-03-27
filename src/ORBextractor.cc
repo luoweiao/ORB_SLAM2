@@ -1170,7 +1170,7 @@ void ORBextractor::ComputePyramid(cv::Mat image)
         }
         else
         {
-            //对于第0层金字塔，直接将图像深拷贝到temp的中间，并且赌气周围进行边界扩展，temp为原图扩展后的图像
+            //对于第0层金字塔，直接将图像深拷贝到temp的中间，并且对齐周围进行边界扩展，temp为原图扩展后的图像
             copyMakeBorder(image, temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
                            BORDER_REFLECT_101);            
         }
