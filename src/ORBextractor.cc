@@ -407,7 +407,7 @@ static int bit_pattern_31_[256*4] =
     -1,-6, 0,-11/*mean (0.127148), correlation (0.547401)*/
 };
 /**
- * @brief ORB pattern
+ * @brief ORB pattern，初始化图像金字塔，为每层金字塔分配特征点数量，计算灰度质心圆的16个像素坐标，初始化指向bit_pattern_31_的指针
  * @param nfeatures 提取特征数量
  * @param scaleFactor 图像金字塔尺度因子
  * @param nlevels 图像金字塔层数
@@ -446,6 +446,7 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
     float nDesiredFeaturesPerScale = nfeatures*(1 - factor)/(1 - (float)pow((double)factor, (double)nlevels));
 
     int sumFeatures = 0;
+    //逐层分配特征点数量
     for( int level = 0; level < nlevels-1; level++ )
     {
         //四舍五入为整数赋值给该向量
@@ -454,6 +455,7 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
         //每层逐渐减少特征点数量
         nDesiredFeaturesPerScale *= factor;
     }
+    //最高层分配特征点
     mnFeaturesPerLevel[nlevels-1] = std::max(nfeatures - sumFeatures, 0);
 
     const int npoints = 512;
@@ -461,16 +463,24 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
     const Point* pattern0 = (const Point*)bit_pattern_31_;
     std::copy(pattern0, pattern0 + npoints, std::back_inserter(pattern));
 
+    //计算ORB特征，选取像素p假设其亮度为I(p)，
+    //设置阈值T，以p为中心，选取半径为3的16个点的亮度为I(p1),I(p2),...I(p16)
+    //若有连续N个点的亮度大于I(p)+T或小于I(p)-T，则认为p是特征点
     //This is for orientation
     // pre-compute the end of a row in a circular patch
-    umax.resize(HALF_PATCH_SIZE + 1);//查找点周围圆形边上的16个点
-
-    int v, v0, vmax = cvFloor(HALF_PATCH_SIZE * sqrt(2.f) / 2 + 1);//计算并向下取整
+    //计算灰度质心
+    //选取圆作为灰度质心（不选正方形是因为正方形不具有旋转不变性）
+    umax.resize(HALF_PATCH_SIZE + 1);
+    
+    int v, v0, 
+    vmax = cvFloor(HALF_PATCH_SIZE * sqrt(2.f) / 2 + 1);//计算并向下取整（计算圆的最大行号）二分之根号二对应45°圆心角
     int vmin = cvCeil(HALF_PATCH_SIZE * sqrt(2.f) / 2);//计算并向上取整
-    const double hp2 = HALF_PATCH_SIZE*HALF_PATCH_SIZE;
+    const double hp2 = HALF_PATCH_SIZE*HALF_PATCH_SIZE; //圆形半径平方
+    //计算每行像素的u坐标边界
     for (v = 0; v <= vmax; ++v)
         umax[v] = cvRound(sqrt(hp2 - v * v));
 
+    //计算八分之一圆后对称得到整个圆形的u坐标边界
     // Make sure we are symmetric
     for (v = HALF_PATCH_SIZE, v0 = 0; v >= vmin; --v)
     {
