@@ -557,7 +557,11 @@ void ExtractorNode::DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNo
         n4.bNoMore = true;
 
 }
-
+/**
+ * @brief 使用八叉树对特征点进行平均分配
+ * @param v
+ */
+//使用八叉树对特征点进行平均分配
 vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint>& vToDistributeKeys, const int &minX,
                                        const int &maxX, const int &minY, const int &maxY, const int &N, const int &level)
 {
@@ -783,66 +787,89 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint>&
 
     return vResultKeys;
 }
-
+//计算四叉树特征点
 void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoints)
 {
+    //调整特征点层数
     allKeypoints.resize(nlevels);
 
+    //设置图像cell网格大小（30*30）
     const float W = 30;
 
+    //遍历每一层图像
     for (int level = 0; level < nlevels; ++level)
     {
-        const int minBorderX = EDGE_THRESHOLD-3;
-        const int minBorderY = minBorderX;
-        const int maxBorderX = mvImagePyramid[level].cols-EDGE_THRESHOLD+3;
-        const int maxBorderY = mvImagePyramid[level].rows-EDGE_THRESHOLD+3;
+        //计算该层图像坐标，这里是坐标边界，由于需要提取的FAST特征点是以3为半径的圆形区域，所以需要加上3的边界
+        const int minBorderX = EDGE_THRESHOLD-3;                            //边界X最小值
+        const int minBorderY = minBorderX;                                  //边界Y最小值        
+        const int maxBorderX = mvImagePyramid[level].cols-EDGE_THRESHOLD+3; //边界X最大值
+        const int maxBorderY = mvImagePyramid[level].rows-EDGE_THRESHOLD+3; //边界Y最大值
 
+        //存储需要进行平均分配的特征点
         vector<cv::KeyPoint> vToDistributeKeys;
+        //一般会过量采集，需要预分配空间为nfeatures*10
         vToDistributeKeys.reserve(nfeatures*10);
 
+        //计算需要进行特征提取的图像区域
         const float width = (maxBorderX-minBorderX);
         const float height = (maxBorderY-minBorderY);
 
+        //W为cell边长，计算网格所在当前层的图像的行数与列数
         const int nCols = width/W;
         const int nRows = height/W;
+        //计算每一个网格所占用的像素
         const int wCell = ceil(width/nCols);
         const int hCell = ceil(height/nRows);
 
+        //遍历网格，按行遍历
         for(int i=0; i<nRows; i++)
         {
+            //计算当前网格初始化，计算网格最小和最大行坐标，+6=+3+3扩展方便提取FAST特征
             const float iniY =minBorderY+i*hCell;
             float maxY = iniY+hCell+6;
 
+            //最大值超出图像有效边界
             if(iniY>=maxBorderY-3)
                 continue;
+            //图像大小导致无法划分出整齐的网格，则以最后边界作为最大Y值
             if(maxY>maxBorderY)
                 maxY = maxBorderY;
 
+            //开始遍历列
             for(int j=0; j<nCols; j++)
             {
+                //计算当前网格初始化X值，计算当前网格最小和最大列坐标
                 const float iniX =minBorderX+j*wCell;
                 float maxX = iniX+wCell+6;
+
                 if(iniX>=maxBorderX-6)
                     continue;
                 if(maxX>maxBorderX)
                     maxX = maxBorderX;
 
+                //调用opencv函数在网格中提取FAST角点
                 vector<cv::KeyPoint> vKeysCell;
-                FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
-                     vKeysCell,iniThFAST,true);
-
+                FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),     //待检测的图像
+                                                                        vKeysCell,      //存储角点位置的容器
+                                                                        iniThFAST,      //检测阈值
+                                                                            true);      //使能非极大值抑制
+                //如果iniThEAST阈值为计算出来，则使用更低的检测阈值
                 if(vKeysCell.empty())
                 {
                     FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
                          vKeysCell,minThFAST,true);
                 }
 
+                //如果有FAST关键点
                 if(!vKeysCell.empty())
                 {
+                    //遍历取出所有关键点
                     for(vector<cv::KeyPoint>::iterator vit=vKeysCell.begin(); vit!=vKeysCell.end();vit++)
                     {
+                        //目前这些角点是基于图像的cell的，因此需要恢复到当前检测图像下的坐标
                         (*vit).pt.x+=j*wCell;
                         (*vit).pt.y+=i*hCell;
+                        //把特征点存入待分配的容器中
                         vToDistributeKeys.push_back(*vit);
                     }
                 }
@@ -850,11 +877,18 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
             }
         }
 
+        //声明对当前层特征点容器的引用
         vector<KeyPoint> & keypoints = allKeypoints[level];
+        //调整其容量（扩大了）
         keypoints.reserve(nfeatures);
-
-        keypoints = DistributeOctTree(vToDistributeKeys, minBorderX, maxBorderX,
-                                      minBorderY, maxBorderY,mnFeaturesPerLevel[level], level);
+        
+        //根据该层的兴趣点数，对特征点进行剔除，返回值是一个保有特征点的容器，含有剔除后的特征点，
+        //得到的特征点坐标为当前图层下的
+        keypoints = DistributeOctTree(vToDistributeKeys,                //当前图层提取到的特征点（坐标为半径扩充图像下）
+                                            minBorderX,maxBorderX,      //当前层图像边界（坐标为边缘扩充图像下）
+                                            minBorderY,maxBorderY,
+                                            mnFeaturesPerLevel[level],  //期望保留的当前层图像特征点数量
+                                            level);                     //当前层图像所在图层
 
         const int scaledPatchSize = PATCH_SIZE*mvScaleFactor[level];
 
@@ -1081,6 +1115,7 @@ void ORBextractor::operator()( InputArray _image,               //输入图像
     //计算图像金字塔
     ComputePyramid(image);
 
+    //**特征点提取与分配 */
     vector < vector<KeyPoint> > allKeypoints;
     ComputeKeyPointsOctTree(allKeypoints);
     //ComputeKeyPointsOld(allKeypoints);
@@ -1161,11 +1196,11 @@ void ORBextractor::ComputePyramid(cv::Mat image)
                     0,                      //垂直方向缩放系数，留0自动计算
                     INTER_LINEAR);          //插值方法
 
-            //扩展边界
+            //扩展边界，把原图像拷贝到目标图像中央，四面填充指定像素，若图片已经拷贝到中央，只填充边界
             copyMakeBorder(mvImagePyramid[level],                               //原始图像
                                             temp,                               //目标图像
-                                            EDGE_THRESHOLD, EDGE_THRESHOLD,     //上下边界
-                                            EDGE_THRESHOLD, EDGE_THRESHOLD,     //左右边界
+                                            EDGE_THRESHOLD, EDGE_THRESHOLD,     //上下需要扩展的边界大小
+                                            EDGE_THRESHOLD, EDGE_THRESHOLD,     //左右需要扩展的边界大小
                            BORDER_REFLECT_101+BORDER_ISOLATED);                 //扩充方法
         }
         else
