@@ -559,25 +559,43 @@ void ExtractorNode::DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNo
 }
 /**
  * @brief 使用八叉树对特征点进行平均分配
- * @param v
+ * @param vToDistributeKeys 等待分配的特征点集合
+ * @param minX 最小x坐标
+ * @param maxX 最大x坐标
+ * @param minY 最小y坐标
+ * @param maxY 最大y坐标
+ * @param N 期望特征点数量
+ * @param level 当前金字塔层数
+ * @return 返回分配后的特征点集合
  */
 //使用八叉树对特征点进行平均分配
-vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint>& vToDistributeKeys, const int &minX,
-                                       const int &maxX, const int &minY, const int &maxY, const int &N, const int &level)
+vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint>& vToDistributeKeys, 
+                                                                    const int &minX,const int &maxX, 
+                                                                    const int &minY, const int &maxY, 
+                                                                                        const int &N, 
+                                                                                    const int &level)
 {
-    // Compute how many initial nodes   
+    // Compute how many initial nodes
+    //生成初始化节点个数（根据宽高比计算）图像窄高时，可能为0！   
     const int nIni = round(static_cast<float>(maxX-minX)/(maxY-minY));
 
+    //一个初始节点的X方向的像素数，
     const float hX = static_cast<float>(maxX-minX)/nIni;
 
+    //存储提取节点的列表
     list<ExtractorNode> lNodes;
 
+    //存储初始提取器节点的指针
     vector<ExtractorNode*> vpIniNodes;
+    //分配初始节点的指针空间
     vpIniNodes.resize(nIni);
 
+    //生成指定个数的初始提取器节点
     for(int i=0; i<nIni; i++)
     {
+        //生成一个提取器节点
         ExtractorNode ni;
+        //U up B bottom L left R right
         ni.UL = cv::Point2i(hX*static_cast<float>(i),0);
         ni.UR = cv::Point2i(hX*static_cast<float>(i+1),0);
         ni.BL = cv::Point2i(ni.UL.x,maxY-minY);
